@@ -1,0 +1,421 @@
+--======================================
+-- SERVIÇOS
+--======================================
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
+
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--======================================
+-- CARACTER
+--======================================
+local function getChar()
+	return Player.Character or Player.CharacterAdded:Wait()
+end
+
+local Char = getChar()
+local Humanoid = Char:WaitForChild("Humanoid")
+local HRP = Char:WaitForChild("HumanoidRootPart")
+
+Player.CharacterAdded:Connect(function(c)
+	Char = c
+	Humanoid = c:WaitForChild("Humanoid")
+	HRP = c:WaitForChild("HumanoidRootPart")
+end)
+
+--======================================
+-- ANTI AFK
+--======================================
+Player.Idled:Connect(function()
+	VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
+end)
+
+--======================================
+-- CORES / ANIMAÇÃO
+--======================================
+local COLOR_OFF = Color3.fromRGB(60,60,60)
+local COLOR_ON  = Color3.fromRGB(0,150,255)
+
+local function AnimateButton(btn,state)
+	TweenService:Create(
+		btn,
+		TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{BackgroundColor3 = state and COLOR_ON or COLOR_OFF}
+	):Play()
+end
+
+--======================================
+-- GUI BASE
+--======================================
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.ResetOnSpawn = false
+
+-- SOM DE CLIQUE
+local ClickSound = Instance.new("Sound", ScreenGui)
+ClickSound.SoundId = "rbxassetid://12221967"
+ClickSound.Volume = 1
+local function PlayClick()
+	ClickSound:Play()
+end
+
+--======================================
+-- BOTÃO FLUTUANTE
+--======================================
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
+ToggleBtn.Size = UDim2.new(0,60,0,60)
+ToggleBtn.Position = UDim2.new(0.5,-30,0.5,-30)
+ToggleBtn.Text = "MENU"
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 14
+ToggleBtn.TextColor3 = Color3.new(1,1,1)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1,0)
+
+-- ARRASTAR BOTÃO
+local dragging, dragStart, startPos
+ToggleBtn.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = i.Position
+		startPos = ToggleBtn.Position
+	end
+end)
+ToggleBtn.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.Touch then dragging = false end
+end)
+UIS.InputChanged:Connect(function(i)
+	if dragging and i.UserInputType == Enum.UserInputType.Touch then
+		local d = i.Position - dragStart
+		ToggleBtn.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y)
+	end
+end)
+
+--======================================
+-- MENU PRINCIPAL
+--======================================
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0.92,0,0.75,0)
+Frame.Position = UDim2.new(0.04,0,0.12,0)
+Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Frame.Visible = false
+Instance.new("UICorner", Frame)
+
+ToggleBtn.MouseButton1Click:Connect(function()
+	PlayClick()
+	Frame.Visible = not Frame.Visible
+end)
+
+--======================================
+-- TOPO (X e -)
+--======================================
+local TopBar = Instance.new("Frame", Frame)
+TopBar.Size = UDim2.new(1,0,0,35)
+TopBar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.new(0,35,1,0)
+CloseBtn.Position = UDim2.new(1,-35,0,0)
+CloseBtn.Text = "X"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextColor3 = Color3.fromRGB(255,80,80)
+CloseBtn.BackgroundTransparency = 1
+
+local MinBtn = Instance.new("TextButton", TopBar)
+MinBtn.Size = UDim2.new(0,35,1,0)
+MinBtn.Position = UDim2.new(1,-70,0,0)
+MinBtn.Text = "-"
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextColor3 = Color3.new(1,1,1)
+MinBtn.BackgroundTransparency = 1
+
+local minimized = false
+MinBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	Frame.Size = minimized and UDim2.new(0.92,0,0.08,0) or UDim2.new(0.92,0,0.75,0)
+end)
+CloseBtn.MouseButton1Click:Connect(function()
+	Frame.Visible = false
+end)
+
+--======================================
+-- ABAS
+--======================================
+local TabFrame = Instance.new("Frame", Frame)
+TabFrame.Size = UDim2.new(1,0,0,40)
+TabFrame.Position = UDim2.new(0,0,0,35)
+TabFrame.BackgroundTransparency = 1
+
+local function TabButton(name,pos)
+	local btn = Instance.new("TextButton", TabFrame)
+	btn.Size = UDim2.new(0.25,0,1,0)
+	btn.Position = UDim2.new(pos,0,0,0)
+	btn.Text = name
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 14
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
+	return btn
+end
+
+local TabMove = TabButton("🏃 Movimento",0)
+local TabCam  = TabButton("📷 Câmera",0.25)
+local TabVis  = TabButton("👁️ Visual",0.5)
+local TabTP   = TabButton("🚀 Teleport",0.75)
+
+-- PÁGINAS
+local function PageFrame()
+	local f = Instance.new("ScrollingFrame", Frame)
+	f.Position = UDim2.new(0,0,0,75)
+	f.Size = UDim2.new(1,0,1,-75)
+	f.BackgroundTransparency = 1
+	f.ScrollBarThickness = 8
+	local layout = Instance.new("UIListLayout", f)
+	layout.Padding = UDim.new(0,8)
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	f.Visible = false
+	return f
+end
+
+local MovePage   = PageFrame()
+local CamPage    = PageFrame()
+local VisualPage = PageFrame()
+local TPPage     = PageFrame()
+
+local function ShowPage(page)
+	MovePage.Visible=false
+	CamPage.Visible=false
+	VisualPage.Visible=false
+	TPPage.Visible=false
+	page.Visible=true
+end
+
+TabMove.MouseButton1Click:Connect(function() ShowPage(MovePage) end)
+TabCam.MouseButton1Click:Connect(function() ShowPage(CamPage) end)
+TabVis.MouseButton1Click:Connect(function() ShowPage(VisualPage) end)
+TabTP.MouseButton1Click:Connect(function() ShowPage(TPPage) end)
+ShowPage(MovePage)
+
+--======================================
+-- FUNÇÃO BOTÃO
+--======================================
+local function Button(parent,text)
+	local b = Instance.new("TextButton", parent)
+	b.Size = UDim2.new(1,-30,0,45)
+	b.Text = text
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 14
+	b.TextColor3 = Color3.new(1,1,1)
+	b.BackgroundColor3 = COLOR_OFF
+	Instance.new("UICorner", b)
+	b.MouseButton1Click:Connect(PlayClick)
+	return b
+end
+
+--======================================
+-- MOVIMENTO
+--======================================
+local FlyBtn = Button(MovePage,"🕊️ Fly")
+local UpBtn  = Button(MovePage,"⬆ Subir")
+local DownBtn= Button(MovePage,"⬇ Descer")
+local SpeedBtn = Button(MovePage,"⚡ Speed")
+local NoclipBtn= Button(MovePage,"🚪 Noclip")
+local SpinBtn  = Button(MovePage,"🌀 Girar")
+
+-- FLY
+local flyOn = false
+local flySpeed = 50
+local flyY = 0
+local bv,bg
+
+FlyBtn.MouseButton1Click:Connect(function()
+	flyOn = not flyOn
+	AnimateButton(FlyBtn,flyOn)
+	if flyOn then
+		bv = Instance.new("BodyVelocity",HRP)
+		bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+		bg = Instance.new("BodyGyro",HRP)
+		bg.MaxTorque = Vector3.new(1e9,1e9,1e9)
+		RunService.RenderStepped:Connect(function()
+			if flyOn then
+				local move = Humanoid.MoveDirection
+				bv.Velocity = Vector3.new(move.X*flySpeed,flyY*flySpeed,move.Z*flySpeed)
+			end
+		end)
+	else
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
+	end
+end)
+
+UpBtn.MouseButton1Click:Connect(function() flyY = 1 end)
+DownBtn.MouseButton1Click:Connect(function() flyY = -1 end)
+RunService.RenderStepped:Connect(function() if not flyOn then flyY=0 end end)
+
+-- SPEED
+local speedOn = false
+SpeedBtn.MouseButton1Click:Connect(function()
+	speedOn = not speedOn
+	AnimateButton(SpeedBtn,speedOn)
+	Humanoid.WalkSpeed = speedOn and 50 or 16
+end)
+
+-- NOCLIP
+local noclipOn=false
+NoclipBtn.MouseButton1Click:Connect(function()
+	noclipOn = not noclipOn
+	AnimateButton(NoclipBtn,noclipOn)
+end)
+
+RunService.Stepped:Connect(function()
+	if noclipOn then
+		for _,v in pairs(Char:GetDescendants()) do
+			if v:IsA("BasePart") then
+				v.CanCollide=false
+			end
+		end
+	end
+end)
+
+-- SPIN
+local spinOn=false
+SpinBtn.MouseButton1Click:Connect(function()
+	spinOn = not spinOn
+	AnimateButton(SpinBtn,spinOn)
+end)
+
+RunService.RenderStepped:Connect(function()
+	if spinOn then
+		HRP.CFrame = HRP.CFrame*CFrame.Angles(0,math.rad(80),0)
+	end
+end)
+
+--======================================
+-- CAMERA
+--======================================
+local CamFreeBtn = Button(CamPage,"📷 Camera Livre")
+local CameramanBtn = Button(CamPage,"🎥 Cameraman")
+local camOn=false
+local camManOn=false
+local camCF
+
+CamFreeBtn.MouseButton1Click:Connect(function()
+	camOn = not camOn
+	AnimateButton(CamFreeBtn,camOn)
+	if camOn then
+		camCF=Camera.CFrame
+		Camera.CameraType=Enum.CameraType.Scriptable
+	else
+		Camera.CameraType=Enum.CameraType.Custom
+	end
+end)
+
+CameramanBtn.MouseButton1Click:Connect(function()
+	camManOn = not camManOn
+	AnimateButton(CameramanBtn,camManOn)
+	if camManOn then
+		Camera.CameraType=Enum.CameraType.Scriptable
+		camCF=Camera.CFrame
+	else
+		Camera.CameraType=Enum.CameraType.Custom
+	end
+end)
+
+RunService.RenderStepped:Connect(function(dt)
+	if camManOn then
+		local delta = UIS:GetMouseDelta()
+		camCF *= CFrame.Angles(-delta.Y*0.002,-delta.X*0.002,0)
+		camCF += Camera.CFrame.LookVector*Humanoid.MoveDirection.Magnitude*0.5
+		Camera.CFrame = camCF
+	end
+end)
+
+--======================================
+-- VISUAL
+--======================================
+local ESPBtn = Button(VisualPage,"👁️ ESP Time")
+local InvisBtn = Button(VisualPage,"👻 Invisível")
+local espOn=false
+local invisOn=false
+local espObjs={}
+
+local function TeamColor(p)
+	if p.Team and p.Team.TeamColor then return p.Team.TeamColor.Color end
+	return Color3.fromRGB(255,0,0)
+end
+
+ESPBtn.MouseButton1Click:Connect(function()
+	espOn = not espOn
+	AnimateButton(ESPBtn,espOn)
+	for _,h in pairs(espObjs) do h:Destroy() end
+	espObjs = {}
+	if espOn then
+		for _,p in pairs(Players:GetPlayers()) do
+			if p~=Player and p.Character then
+				local h = Instance.new("Highlight",p.Character)
+				h.FillColor=TeamColor(p)
+				h.FillTransparency=0.35
+				h.OutlineTransparency=0
+				espObjs[p]=h
+			end
+		end
+	end
+end)
+
+InvisBtn.MouseButton1Click:Connect(function()
+	invisOn = not invisOn
+	AnimateButton(InvisBtn,invisOn)
+	for _,v in pairs(Char:GetDescendants()) do
+		if v:IsA("BasePart") or v:IsA("Decal") then
+			v.Transparency = invisOn and 1 or 0
+		end
+	end
+end)
+
+--======================================
+-- TELEPORT
+--======================================
+local LocalTPBtn = Button(TPPage,"📍 Teleport Local")
+local TpBtn = Button(TPPage,"🚀 Teleport Player")
+local savedCF = HRP.CFrame
+local SelectedPlayer
+
+LocalTPBtn.MouseButton1Click:Connect(function()
+	if (HRP.Position-savedCF.Position).Magnitude>5 then
+		savedCF=HRP.CFrame
+	else
+		HRP.CFrame=savedCF
+	end
+end)
+
+-- LISTA PLAYERS
+local function RefreshPlayers()
+	for _,c in pairs(TPPage:GetChildren()) do
+		if c:IsA("TextButton") and c~=LocalTPBtn and c~=TpBtn then
+			c:Destroy()
+		end
+	end
+	for _,p in pairs(Players:GetPlayers()) do
+		if p~=Player then
+			local b=Button(TPPage,p.Name)
+			b.MouseButton1Click:Connect(function()
+				SelectedPlayer=p
+			end)
+		end
+	end
+end
+
+RefreshPlayers()
+Players.PlayerAdded:Connect(RefreshPlayers)
+Players.PlayerRemoving:Connect(RefreshPlayers)
+
+TpBtn.MouseButton1Click:Connect(function()
+	if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		HRP.CFrame = SelectedPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+	end
+end)
