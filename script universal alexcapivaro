@@ -1,6 +1,6 @@
 --======================================
--- SCRIPT UNIVERSAL MOBILE - BOLINHA CENTRAL
--- Botão flutuante no CENTRO da tela
+-- SCRIPT UNIVERSAL MOBILE - AIMBOT CORRIGIDO
+-- Versão final com aimbot funcionando no celular
 --======================================
 
 local Players = game:GetService("Players")
@@ -35,6 +35,10 @@ local savedCF = CFrame.new()
 local SelectedPlayer = nil
 local ladoEscolhido = 1
 
+-- Variáveis do Aimbot
+local ultimaVida = 100
+local desviando = false
+
 --======================================
 -- CORES
 --======================================
@@ -57,6 +61,11 @@ Player.CharacterAdded:Connect(function(c)
     Char = c
     Humanoid = c:WaitForChild("Humanoid")
     HRP = c:WaitForChild("HumanoidRootPart")
+    
+    -- Reconfigurar aimbot se estiver ativo
+    if aimbotOn and Humanoid then
+        ultimaVida = Humanoid.Health
+    end
 end)
 
 --======================================
@@ -69,6 +78,69 @@ Player.Idled:Connect(function()
 end)
 
 --======================================
+-- FUNÇÕES DO AIMBOT (CORRIGIDO PRA MOBILE)
+--======================================
+local function encontrarChaoSeguro(posicao)
+    local raycastParams = RaycastParams.new()
+    if Char then 
+        raycastParams.FilterDescendantsInstances = {Char} 
+    end
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    -- Procurar chão pro lado
+    for i = 1, 5 do
+        local offset = Vector3.new(ladoEscolhido * 20 * i, 0, 0)
+        local checkPos = posicao + offset
+        local rayOrigin = checkPos + Vector3.new(0, 15, 0)
+        local rayDirection = Vector3.new(0, -30, 0)
+        
+        local raycast = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+        
+        if raycast then
+            return CFrame.new(raycast.Position + Vector3.new(0, 3, 0))
+        end
+    end
+    
+    -- Se não achar chão, vai pro lado mesmo assim
+    return posicao + Vector3.new(ladoEscolhido * 15, 0, 0)
+end
+
+local function desviar()
+    if desviando or not HRP then return end
+    desviando = true
+    
+    print("🎯 DESVIANDO PRO " .. (ladoEscolhido == 1 and "DIREITA" or "ESQUERDA"))
+    
+    -- Salvar posição atual
+    local posicaoAtual = HRP.Position
+    
+    -- Calcular posição segura pro lado
+    local posicaoDesvio = encontrarChaoSeguro(posicaoAtual)
+    
+    -- Teleportar pro lado
+    HRP.CFrame = posicaoDesvio
+    
+    task.wait(0.1)
+    desviando = false
+end
+
+-- Função pra configurar o monitoramento de dano
+local function setupAimbot()
+    if Humanoid and aimbotOn then
+        ultimaVida = Humanoid.Health
+        Humanoid.HealthChanged:Connect(function(novaVida)
+            if aimbotOn and not desviando and HRP then
+                if novaVida < ultimaVida then
+                    print("⚠️ DANO DETECTADO! Ativando desvio...")
+                    desviar()
+                end
+                ultimaVida = novaVida
+            end
+        end)
+    end
+end
+
+--======================================
 -- GUI PRINCIPAL
 --======================================
 local ScreenGui = Instance.new("ScreenGui")
@@ -76,12 +148,10 @@ ScreenGui.Name = "UniversalMobile"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
--- ======================================
--- BOLINHA NO CENTRO DA TELA
--- ======================================
+-- BOLINHA NO CENTRO
 local ToggleBtn = Instance.new("TextButton", ScreenGui)
-ToggleBtn.Size = UDim2.new(0, 50, 0, 50)  -- Um pouco maior
-ToggleBtn.Position = UDim2.new(0.5, -25, 0.5, -25)  -- CENTRO DA TELA!
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0.5, -25, 0.5, -25)
 ToggleBtn.Text = "⚡"
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.TextSize = 30
@@ -91,7 +161,7 @@ ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Draggable = true
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1,0)
 
--- Efeito de brilho (opcional)
+-- Efeito de brilho
 local efeito = Instance.new("ImageLabel", ToggleBtn)
 efeito.Size = UDim2.new(1.5, 0, 1.5, 0)
 efeito.Position = UDim2.new(-0.25, 0, -0.25, 0)
@@ -187,7 +257,7 @@ end
 TrocarAba(1)
 
 --======================================
--- FUNÇÃO PRA CRIAR GRUPOS ORGANIZADOS
+-- FUNÇÃO PRA CRIAR GRUPOS
 --======================================
 local function CriarGrupo(container, titulo, yPos, altura)
     local grupo = Instance.new("Frame", container)
@@ -240,7 +310,7 @@ local function CriarLinhaPequena(pai, yPos, botoes)
 end
 
 --======================================
--- FUNÇÕES
+-- FUNÇÕES GERAIS
 --======================================
 local function matar()
     if Player.Character and Player.Character:FindFirstChild("Humanoid") then
@@ -296,18 +366,13 @@ CriarLinhaPequena(speedGroup, 20, {
     {texto = tostring(speedValue), callback = function(btn)
         local idx = 1
         for i, v in ipairs(speedOptions) do 
-            if v == speedValue then 
-                idx = i 
-                break
-            end 
+            if v == speedValue then idx = i; break end
         end
         idx = idx + 1
         if idx > #speedOptions then idx = 1 end
         speedValue = speedOptions[idx]
         btn.Text = tostring(speedValue)
-        if speedOn then 
-            Humanoid.WalkSpeed = speedValue 
-        end
+        if speedOn then Humanoid.WalkSpeed = speedValue end
         btn.BackgroundColor3 = COLOR_ON
         task.wait(0.2)
         btn.BackgroundColor3 = COLOR_OFF
@@ -341,25 +406,36 @@ CriarLinhaPequena(camGroup, 50, {
 })
 
 --======================================
--- ABA 3 - AIMBOT
+-- ABA 3 - AIMBOT (CORRIGIDO)
 --======================================
 local aimGroup = CriarGrupo(Containers[3], "🎯 AIMBOT", 0, 85)
+
 CriarLinhaPequena(aimGroup, 20, {
     {texto = "ATIVAR", callback = function(btn)
         aimbotOn = not aimbotOn
         btn.BackgroundColor3 = aimbotOn and COLOR_ON or COLOR_OFF
+        if aimbotOn then
+            -- Configurar monitoramento de dano
+            setupAimbot()
+            print("✅ AIMBOT ATIVADO - Desvio lateral")
+        else
+            print("❌ AIMBOT DESATIVADO")
+        end
     end}
 })
+
 CriarLinhaPequena(aimGroup, 50, {
     {texto = "⬅️ ESQUERDA", callback = function(btn)
         ladoEscolhido = -1
         btn.BackgroundColor3 = COLOR_ON
+        print("🎯 Direção: ESQUERDA")
         task.wait(0.2)
         btn.BackgroundColor3 = COLOR_OFF
     end},
     {texto = "➡️ DIREITA", callback = function(btn)
         ladoEscolhido = 1
         btn.BackgroundColor3 = COLOR_ON
+        print("🎯 Direção: DIREITA")
         task.wait(0.2)
         btn.BackgroundColor3 = COLOR_OFF
     end}
@@ -391,7 +467,9 @@ CriarLinhaPequena(visGroup, 20, {
         invisOn = not invisOn
         btn.BackgroundColor3 = invisOn and COLOR_ON or COLOR_OFF
         for _, v in pairs(Char:GetDescendants()) do
-            if v:IsA("BasePart") then v.Transparency = invisOn and 0.9 or 0 end
+            if v:IsA("BasePart") then 
+                v.Transparency = invisOn and 0.9 or 0 
+            end
         end
     end}
 })
@@ -399,7 +477,10 @@ CriarLinhaPequena(visGroup, 50, {
     {texto = "🛡️ ANTI-BAN", callback = function(btn)
         antiBanOn = not antiBanOn
         btn.BackgroundColor3 = antiBanOn and COLOR_ON or COLOR_OFF
-        if antiBanOn then print = function() end end
+        if antiBanOn then 
+            print = function() end 
+            ScreenGui.Name = "Sys_" .. math.random(1000,9999)
+        end
     end},
     {texto = "🔄 SERVER", cor = COLOR_SERVER, callback = mudarServer}
 })
@@ -502,12 +583,18 @@ Players.PlayerRemoving:Connect(AtualizarLista)
 RunService.Stepped:Connect(function()
     if noclipOn and Char then
         for _, v in pairs(Char:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
+            if v:IsA("BasePart") then 
+                v.CanCollide = false 
+            end
         end
     end
     
     if flyOn and HRP and bv then
-        local move = Humanoid.MoveDirection
+        -- Adaptado pra mobile (usa posição do personagem)
+        local move = Vector3.new(0,0,0)
+        if Humanoid then
+            move = Humanoid.MoveDirection
+        end
         bv.Velocity = Vector3.new(move.X * flySpeed, flyY * flySpeed, move.Z * flySpeed)
     end
     
@@ -516,11 +603,19 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ABRIR MENU (BOLINHA NO CENTRO)
+-- ABRIR MENU
 ToggleBtn.MouseButton1Click:Connect(function()
     Frame.Visible = not Frame.Visible
-    if Frame.Visible then AtualizarLista() end
+    if Frame.Visible then 
+        AtualizarLista() 
+    end
 end)
 
-print("✅ SCRIPT MOBILE CARREGADO!")
-print("📱 Bolinha no CENTRO da tela - Toque para abrir o menu!")
+-- Setup inicial do aimbot se já estiver ativo
+if aimbotOn then
+    setupAimbot()
+end
+
+print("✅ SCRIPT MOBILE FINAL CARREGADO!")
+print("📱 AIMBOT CORRIGIDO - Funciona no celular!")
+print("⚡ Bolinha no centro - Toque para abrir")
