@@ -1,421 +1,526 @@
 --======================================
--- SERVIÇOS
+-- SCRIPT UNIVERSAL MOBILE - BOLINHA CENTRAL
+-- Botão flutuante no CENTRO da tela
 --======================================
+
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 --======================================
--- CARACTER
+-- VARIÁVEIS
 --======================================
-local function getChar()
-	return Player.Character or Player.CharacterAdded:Wait()
-end
+local flyOn = false
+local flySpeed = 50
+local flyY = 0
+local bv, bg
 
-local Char = getChar()
+local speedOn = false
+local speedValue = 16
+local speedOptions = {16, 30, 50, 75, 100, 150, 200}
+
+local noclipOn = false
+local spinOn = false
+local espOn = false
+local invisOn = false
+local antiBanOn = false
+local aimbotOn = false
+
+local espObjs = {}
+local savedCF = CFrame.new()
+local SelectedPlayer = nil
+local ladoEscolhido = 1
+
+--======================================
+-- CORES
+--======================================
+local COLOR_OFF = Color3.fromRGB(45,45,45)
+local COLOR_ON = Color3.fromRGB(0,150,255)
+local COLOR_BG = Color3.fromRGB(18,18,18)
+local COLOR_BAR = Color3.fromRGB(30,30,30)
+local COLOR_KILL = Color3.fromRGB(180,0,0)
+local COLOR_SERVER = Color3.fromRGB(220,100,0)
+
+--======================================
+-- PERSONAGEM
+--======================================
+local Char = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Char:WaitForChild("Humanoid")
 local HRP = Char:WaitForChild("HumanoidRootPart")
+savedCF = HRP.CFrame
 
 Player.CharacterAdded:Connect(function(c)
-	Char = c
-	Humanoid = c:WaitForChild("Humanoid")
-	HRP = c:WaitForChild("HumanoidRootPart")
+    Char = c
+    Humanoid = c:WaitForChild("Humanoid")
+    HRP = c:WaitForChild("HumanoidRootPart")
 end)
 
 --======================================
 -- ANTI AFK
 --======================================
 Player.Idled:Connect(function()
-	VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
-	task.wait(1)
-	VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
+    VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
 end)
 
 --======================================
--- CORES / ANIMAÇÃO
+-- GUI PRINCIPAL
 --======================================
-local COLOR_OFF = Color3.fromRGB(60,60,60)
-local COLOR_ON  = Color3.fromRGB(0,150,255)
-
-local function AnimateButton(btn,state)
-	TweenService:Create(
-		btn,
-		TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{BackgroundColor3 = state and COLOR_ON or COLOR_OFF}
-	):Play()
-end
-
---======================================
--- GUI BASE
---======================================
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "UniversalMobile"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
--- SOM DE CLIQUE
-local ClickSound = Instance.new("Sound", ScreenGui)
-ClickSound.SoundId = "rbxassetid://12221967"
-ClickSound.Volume = 1
-local function PlayClick()
-	ClickSound:Play()
-end
-
---======================================
--- BOTÃO FLUTUANTE
---======================================
+-- ======================================
+-- BOLINHA NO CENTRO DA TELA
+-- ======================================
 local ToggleBtn = Instance.new("TextButton", ScreenGui)
-ToggleBtn.Size = UDim2.new(0,60,0,60)
-ToggleBtn.Position = UDim2.new(0.5,-30,0.5,-30)
-ToggleBtn.Text = "MENU"
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)  -- Um pouco maior
+ToggleBtn.Position = UDim2.new(0.5, -25, 0.5, -25)  -- CENTRO DA TELA!
+ToggleBtn.Text = "⚡"
 ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 14
+ToggleBtn.TextSize = 30
 ToggleBtn.TextColor3 = Color3.new(1,1,1)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+ToggleBtn.BackgroundColor3 = COLOR_BG
+ToggleBtn.BorderSizePixel = 0
+ToggleBtn.Draggable = true
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1,0)
 
--- ARRASTAR BOTÃO
-local dragging, dragStart, startPos
-ToggleBtn.InputBegan:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = i.Position
-		startPos = ToggleBtn.Position
-	end
-end)
-ToggleBtn.InputEnded:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.Touch then dragging = false end
-end)
-UIS.InputChanged:Connect(function(i)
-	if dragging and i.UserInputType == Enum.UserInputType.Touch then
-		local d = i.Position - dragStart
-		ToggleBtn.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y)
-	end
-end)
+-- Efeito de brilho (opcional)
+local efeito = Instance.new("ImageLabel", ToggleBtn)
+efeito.Size = UDim2.new(1.5, 0, 1.5, 0)
+efeito.Position = UDim2.new(-0.25, 0, -0.25, 0)
+efeito.BackgroundTransparency = 1
+efeito.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+efeito.ImageColor3 = Color3.fromRGB(0,150,255)
+efeito.ImageTransparency = 0.7
+efeito.ZIndex = 0
 
---======================================
 -- MENU PRINCIPAL
---======================================
 local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0.92,0,0.75,0)
-Frame.Position = UDim2.new(0.04,0,0.12,0)
-Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Frame.Size = UDim2.new(0, 300, 0, 380)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -190)
+Frame.BackgroundColor3 = COLOR_BG
+Frame.BackgroundTransparency = 0.05
+Frame.BorderSizePixel = 0
 Frame.Visible = false
-Instance.new("UICorner", Frame)
+Frame.Active = true
+Frame.Draggable = true
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
 
-ToggleBtn.MouseButton1Click:Connect(function()
-	PlayClick()
-	Frame.Visible = not Frame.Visible
-end)
+-- BARRA DE TÍTULO
+local TitleBar = Instance.new("Frame", Frame)
+TitleBar.Size = UDim2.new(1,0,0,32)
+TitleBar.BackgroundColor3 = COLOR_BAR
+TitleBar.BorderSizePixel = 0
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
 
---======================================
--- TOPO (X e -)
---======================================
-local TopBar = Instance.new("Frame", Frame)
-TopBar.Size = UDim2.new(1,0,0,35)
-TopBar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+local Title = Instance.new("TextLabel", TitleBar)
+Title.Size = UDim2.new(1, -30, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "⚡ MOBILE"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
 
-local CloseBtn = Instance.new("TextButton", TopBar)
-CloseBtn.Size = UDim2.new(0,35,1,0)
-CloseBtn.Position = UDim2.new(1,-35,0,0)
-CloseBtn.Text = "X"
+local CloseBtn = Instance.new("TextButton", TitleBar)
+CloseBtn.Size = UDim2.new(0, 22, 0, 22)
+CloseBtn.Position = UDim2.new(1, -27, 0, 5)
+CloseBtn.Text = "✕"
 CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
 CloseBtn.TextColor3 = Color3.fromRGB(255,80,80)
 CloseBtn.BackgroundTransparency = 1
-
-local MinBtn = Instance.new("TextButton", TopBar)
-MinBtn.Size = UDim2.new(0,35,1,0)
-MinBtn.Position = UDim2.new(1,-70,0,0)
-MinBtn.Text = "-"
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextColor3 = Color3.new(1,1,1)
-MinBtn.BackgroundTransparency = 1
-
-local minimized = false
-MinBtn.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	Frame.Size = minimized and UDim2.new(0.92,0,0.08,0) or UDim2.new(0.92,0,0.75,0)
-end)
-CloseBtn.MouseButton1Click:Connect(function()
-	Frame.Visible = false
-end)
+CloseBtn.MouseButton1Click:Connect(function() Frame.Visible = false end)
 
 --======================================
 -- ABAS
 --======================================
 local TabFrame = Instance.new("Frame", Frame)
-TabFrame.Size = UDim2.new(1,0,0,40)
-TabFrame.Position = UDim2.new(0,0,0,35)
+TabFrame.Size = UDim2.new(1, -8, 0, 32)
+TabFrame.Position = UDim2.new(0, 4, 0, 35)
 TabFrame.BackgroundTransparency = 1
 
-local function TabButton(name,pos)
-	local btn = Instance.new("TextButton", TabFrame)
-	btn.Size = UDim2.new(0.25,0,1,0)
-	btn.Position = UDim2.new(pos,0,0,0)
-	btn.Text = name
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 14
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
-	return btn
+local Abas = {"MOV", "CAM", "AIM", "VIS", "TP"}
+local Containers = {}
+local AbaBotoes = {}
+
+for i, nome in ipairs(Abas) do
+    local btn = Instance.new("TextButton", TabFrame)
+    btn.Size = UDim2.new(0.2, -2, 1, 0)
+    btn.Position = UDim2.new((i-1)*0.2, 1, 0, 0)
+    btn.Text = nome
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 11
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.BackgroundColor3 = COLOR_BAR
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+    AbaBotoes[i] = btn
+    
+    local container = Instance.new("Frame", Frame)
+    container.Size = UDim2.new(1, -8, 1, -85)
+    container.Position = UDim2.new(0, 4, 0, 70)
+    container.BackgroundTransparency = 1
+    container.Visible = false
+    Containers[i] = container
 end
 
-local TabMove = TabButton("🏃 Movimento",0)
-local TabCam  = TabButton("📷 Câmera",0.25)
-local TabVis  = TabButton("👁️ Visual",0.5)
-local TabTP   = TabButton("🚀 Teleport",0.75)
-
--- PÁGINAS
-local function PageFrame()
-	local f = Instance.new("ScrollingFrame", Frame)
-	f.Position = UDim2.new(0,0,0,75)
-	f.Size = UDim2.new(1,0,1,-75)
-	f.BackgroundTransparency = 1
-	f.ScrollBarThickness = 8
-	local layout = Instance.new("UIListLayout", f)
-	layout.Padding = UDim.new(0,8)
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	f.Visible = false
-	return f
+local function TrocarAba(idx)
+    for i = 1, #Abas do
+        AbaBotoes[i].BackgroundColor3 = COLOR_BAR
+        Containers[i].Visible = false
+    end
+    AbaBotoes[idx].BackgroundColor3 = COLOR_ON
+    Containers[idx].Visible = true
 end
 
-local MovePage   = PageFrame()
-local CamPage    = PageFrame()
-local VisualPage = PageFrame()
-local TPPage     = PageFrame()
+for i = 1, #Abas do
+    AbaBotoes[i].MouseButton1Click:Connect(function() TrocarAba(i) end)
+end
+TrocarAba(1)
 
-local function ShowPage(page)
-	MovePage.Visible=false
-	CamPage.Visible=false
-	VisualPage.Visible=false
-	TPPage.Visible=false
-	page.Visible=true
+--======================================
+-- FUNÇÃO PRA CRIAR GRUPOS ORGANIZADOS
+--======================================
+local function CriarGrupo(container, titulo, yPos, altura)
+    local grupo = Instance.new("Frame", container)
+    grupo.Size = UDim2.new(1, -2, 0, altura)
+    grupo.Position = UDim2.new(0, 1, 0, yPos)
+    grupo.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    grupo.BackgroundTransparency = 0.2
+    Instance.new("UICorner", grupo).CornerRadius = UDim.new(0, 5)
+    
+    local tituloLabel = Instance.new("TextLabel", grupo)
+    tituloLabel.Size = UDim2.new(1, -8, 0, 18)
+    tituloLabel.Position = UDim2.new(0, 4, 0, 2)
+    tituloLabel.BackgroundTransparency = 1
+    tituloLabel.Text = titulo
+    tituloLabel.TextColor3 = Color3.fromRGB(150,150,150)
+    tituloLabel.Font = Enum.Font.GothamBold
+    tituloLabel.TextSize = 10
+    tituloLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    return grupo
 end
 
-TabMove.MouseButton1Click:Connect(function() ShowPage(MovePage) end)
-TabCam.MouseButton1Click:Connect(function() ShowPage(CamPage) end)
-TabVis.MouseButton1Click:Connect(function() ShowPage(VisualPage) end)
-TabTP.MouseButton1Click:Connect(function() ShowPage(TPPage) end)
-ShowPage(MovePage)
-
---======================================
--- FUNÇÃO BOTÃO
---======================================
-local function Button(parent,text)
-	local b = Instance.new("TextButton", parent)
-	b.Size = UDim2.new(1,-30,0,45)
-	b.Text = text
-	b.Font = Enum.Font.GothamBold
-	b.TextSize = 14
-	b.TextColor3 = Color3.new(1,1,1)
-	b.BackgroundColor3 = COLOR_OFF
-	Instance.new("UICorner", b)
-	b.MouseButton1Click:Connect(PlayClick)
-	return b
+local function CriarLinhaPequena(pai, yPos, botoes)
+    local linha = Instance.new("Frame", pai)
+    linha.Size = UDim2.new(1, -8, 0, 28)
+    linha.Position = UDim2.new(0, 4, 0, yPos)
+    linha.BackgroundTransparency = 1
+    
+    local qtd = #botoes
+    local largura = 1 / qtd
+    
+    for i, dados in ipairs(botoes) do
+        local btn = Instance.new("TextButton", linha)
+        btn.Size = UDim2.new(largura, -3, 1, -2)
+        btn.Position = UDim2.new((i-1) * largura, 2, 0, 1)
+        btn.Text = dados.texto
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 10
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.BackgroundColor3 = dados.cor or COLOR_OFF
+        btn.BorderSizePixel = 0
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+        
+        btn.MouseButton1Click:Connect(function() 
+            if dados.callback then dados.callback(btn) end 
+        end)
+    end
+    
+    return linha
 end
 
 --======================================
--- MOVIMENTO
+-- FUNÇÕES
 --======================================
-local FlyBtn = Button(MovePage,"🕊️ Fly")
-local UpBtn  = Button(MovePage,"⬆ Subir")
-local DownBtn= Button(MovePage,"⬇ Descer")
-local SpeedBtn = Button(MovePage,"⚡ Speed")
-local NoclipBtn= Button(MovePage,"🚪 Noclip")
-local SpinBtn  = Button(MovePage,"🌀 Girar")
+local function matar()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.Health = 0
+    end
+end
 
--- FLY
-local flyOn = false
-local flySpeed = 50
-local flyY = 0
-local bv,bg
+local function mudarServer(btn)
+    btn.Text = "⏳"
+    pcall(function() TeleportService:Teleport(game.PlaceId) end)
+end
 
-FlyBtn.MouseButton1Click:Connect(function()
-	flyOn = not flyOn
-	AnimateButton(FlyBtn,flyOn)
-	if flyOn then
-		bv = Instance.new("BodyVelocity",HRP)
-		bv.MaxForce = Vector3.new(1e9,1e9,1e9)
-		bg = Instance.new("BodyGyro",HRP)
-		bg.MaxTorque = Vector3.new(1e9,1e9,1e9)
-		RunService.RenderStepped:Connect(function()
-			if flyOn then
-				local move = Humanoid.MoveDirection
-				bv.Velocity = Vector3.new(move.X*flySpeed,flyY*flySpeed,move.Z*flySpeed)
-			end
-		end)
-	else
-		if bv then bv:Destroy() end
-		if bg then bg:Destroy() end
-	end
+--======================================
+-- ABA 1 - MOVIMENTO
+--======================================
+local flyGroup = CriarGrupo(Containers[1], "🕊️ FLY", 0, 55)
+CriarLinhaPequena(flyGroup, 20, {
+    {texto = "ATIVAR", callback = function(btn)
+        flyOn = not flyOn
+        btn.BackgroundColor3 = flyOn and COLOR_ON or COLOR_OFF
+        if flyOn then
+            bv = Instance.new("BodyVelocity", HRP)
+            bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+            bg = Instance.new("BodyGyro", HRP)
+            bg.MaxTorque = Vector3.new(1e9,1e9,1e9)
+        else
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+            flyY = 0
+        end
+    end},
+    {texto = "⬆️ SOBE", callback = function(btn)
+        flyY = 1
+        btn.BackgroundColor3 = COLOR_ON
+        task.wait(0.2)
+        btn.BackgroundColor3 = flyOn and COLOR_ON or COLOR_OFF
+    end},
+    {texto = "⬇️ DESCE", callback = function(btn)
+        flyY = -1
+        btn.BackgroundColor3 = COLOR_ON
+        task.wait(0.2)
+        btn.BackgroundColor3 = flyOn and COLOR_ON or COLOR_OFF
+    end}
+})
+
+local speedGroup = CriarGrupo(Containers[1], "⚡ SPEED", 60, 55)
+CriarLinhaPequena(speedGroup, 20, {
+    {texto = "ATIVAR", callback = function(btn)
+        speedOn = not speedOn
+        btn.BackgroundColor3 = speedOn and COLOR_ON or COLOR_OFF
+        Humanoid.WalkSpeed = speedOn and speedValue or 16
+    end},
+    {texto = tostring(speedValue), callback = function(btn)
+        local idx = 1
+        for i, v in ipairs(speedOptions) do 
+            if v == speedValue then 
+                idx = i 
+                break
+            end 
+        end
+        idx = idx + 1
+        if idx > #speedOptions then idx = 1 end
+        speedValue = speedOptions[idx]
+        btn.Text = tostring(speedValue)
+        if speedOn then 
+            Humanoid.WalkSpeed = speedValue 
+        end
+        btn.BackgroundColor3 = COLOR_ON
+        task.wait(0.2)
+        btn.BackgroundColor3 = COLOR_OFF
+    end}
+})
+
+local outrosGroup = CriarGrupo(Containers[1], "🎮 OUTROS", 120, 55)
+CriarLinhaPequena(outrosGroup, 20, {
+    {texto = "🚪 NOCLIP", callback = function(btn)
+        noclipOn = not noclipOn
+        btn.BackgroundColor3 = noclipOn and COLOR_ON or COLOR_OFF
+    end},
+    {texto = "🌀 SPIN", callback = function(btn)
+        spinOn = not spinOn
+        btn.BackgroundColor3 = spinOn and COLOR_ON or COLOR_OFF
+    end},
+    {texto = "💀 KILL", cor = COLOR_KILL, callback = matar}
+})
+
+--======================================
+-- ABA 2 - CÂMERA
+--======================================
+local camGroup = CriarGrupo(Containers[2], "📷 CÂMERA", 0, 85)
+CriarLinhaPequena(camGroup, 20, {
+    {texto = "➕ DIST", cor = COLOR_ON},
+    {texto = "➖ DIST", cor = COLOR_ON}
+})
+CriarLinhaPequena(camGroup, 50, {
+    {texto = "➕ ALT", cor = COLOR_ON},
+    {texto = "➖ ALT", cor = COLOR_ON}
+})
+
+--======================================
+-- ABA 3 - AIMBOT
+--======================================
+local aimGroup = CriarGrupo(Containers[3], "🎯 AIMBOT", 0, 85)
+CriarLinhaPequena(aimGroup, 20, {
+    {texto = "ATIVAR", callback = function(btn)
+        aimbotOn = not aimbotOn
+        btn.BackgroundColor3 = aimbotOn and COLOR_ON or COLOR_OFF
+    end}
+})
+CriarLinhaPequena(aimGroup, 50, {
+    {texto = "⬅️ ESQUERDA", callback = function(btn)
+        ladoEscolhido = -1
+        btn.BackgroundColor3 = COLOR_ON
+        task.wait(0.2)
+        btn.BackgroundColor3 = COLOR_OFF
+    end},
+    {texto = "➡️ DIREITA", callback = function(btn)
+        ladoEscolhido = 1
+        btn.BackgroundColor3 = COLOR_ON
+        task.wait(0.2)
+        btn.BackgroundColor3 = COLOR_OFF
+    end}
+})
+
+--======================================
+-- ABA 4 - VISUAL
+--======================================
+local visGroup = CriarGrupo(Containers[4], "👁️ VISUAL", 0, 85)
+CriarLinhaPequena(visGroup, 20, {
+    {texto = "👁️ ESP", callback = function(btn)
+        espOn = not espOn
+        btn.BackgroundColor3 = espOn and COLOR_ON or COLOR_OFF
+        if espOn then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= Player and p.Character then
+                    local h = Instance.new("Highlight", p.Character)
+                    h.FillColor = Color3.new(1,0,0)
+                    h.FillTransparency = 0.5
+                    table.insert(espObjs, h)
+                end
+            end
+        else
+            for _, h in pairs(espObjs) do if h then h:Destroy() end end
+            espObjs = {}
+        end
+    end},
+    {texto = "👻 INVIS", callback = function(btn)
+        invisOn = not invisOn
+        btn.BackgroundColor3 = invisOn and COLOR_ON or COLOR_OFF
+        for _, v in pairs(Char:GetDescendants()) do
+            if v:IsA("BasePart") then v.Transparency = invisOn and 0.9 or 0 end
+        end
+    end}
+})
+CriarLinhaPequena(visGroup, 50, {
+    {texto = "🛡️ ANTI-BAN", callback = function(btn)
+        antiBanOn = not antiBanOn
+        btn.BackgroundColor3 = antiBanOn and COLOR_ON or COLOR_OFF
+        if antiBanOn then print = function() end end
+    end},
+    {texto = "🔄 SERVER", cor = COLOR_SERVER, callback = mudarServer}
+})
+
+--======================================
+-- ABA 5 - TELEPORT
+--======================================
+local tpGroup = CriarGrupo(Containers[5], "📍 TELEPORT", 0, 55)
+CriarLinhaPequena(tpGroup, 20, {
+    {texto = "📍 SALVAR", callback = function(btn)
+        savedCF = HRP.CFrame
+        btn.BackgroundColor3 = COLOR_ON
+        btn.Text = "✓"
+        task.wait(0.3)
+        btn.Text = "📍 SALVAR"
+        btn.BackgroundColor3 = COLOR_OFF
+    end},
+    {texto = "🚀 VOLTAR", callback = function(btn)
+        HRP.CFrame = savedCF
+        btn.BackgroundColor3 = COLOR_ON
+        btn.Text = "✓"
+        task.wait(0.3)
+        btn.Text = "🚀 VOLTAR"
+        btn.BackgroundColor3 = COLOR_OFF
+    end}
+})
+
+local playerGroup = CriarGrupo(Containers[5], "👥 JOGADORES", 60, 130)
+
+local PlayerList = Instance.new("ScrollingFrame", playerGroup)
+PlayerList.Size = UDim2.new(1, -8, 1, -20)
+PlayerList.Position = UDim2.new(0, 4, 0, 18)
+PlayerList.BackgroundTransparency = 1
+PlayerList.BorderSizePixel = 0
+PlayerList.ScrollBarThickness = 3
+PlayerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local PlayerLayout = Instance.new("UIListLayout", PlayerList)
+PlayerLayout.Padding = UDim.new(0, 2)
+
+local function AtualizarLista()
+    for _, c in pairs(PlayerList:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= Player then
+            local btn = Instance.new("TextButton", PlayerList)
+            btn.Size = UDim2.new(1, -2, 0, 24)
+            btn.Text = p.Name
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 10
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            btn.BorderSizePixel = 0
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+            
+            btn.MouseButton1Click:Connect(function()
+                SelectedPlayer = p
+                for _, b in pairs(PlayerList:GetChildren()) do
+                    if b:IsA("TextButton") then 
+                        b.BackgroundColor3 = Color3.fromRGB(50,50,50)
+                    end
+                end
+                btn.BackgroundColor3 = COLOR_ON
+            end)
+        end
+    end
+    
+    PlayerList.CanvasSize = UDim2.new(0, 0, 0, PlayerLayout.AbsoluteContentSize.Y + 5)
+end
+
+local TPBtn = Instance.new("TextButton", playerGroup)
+TPBtn.Size = UDim2.new(1, -8, 0, 24)
+TPBtn.Position = UDim2.new(0, 4, 1, -24)
+TPBtn.Text = "🚀 TP PRA JOGADOR"
+TPBtn.Font = Enum.Font.GothamBold
+TPBtn.TextSize = 10
+TPBtn.TextColor3 = Color3.new(1,1,1)
+TPBtn.BackgroundColor3 = COLOR_ON
+TPBtn.BorderSizePixel = 0
+Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 4)
+
+TPBtn.MouseButton1Click:Connect(function()
+    if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        HRP.CFrame = SelectedPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+        TPBtn.Text = "✓ TP!"
+        task.wait(0.3)
+        TPBtn.Text = "🚀 TP PRA JOGADOR"
+    end
 end)
 
-UpBtn.MouseButton1Click:Connect(function() flyY = 1 end)
-DownBtn.MouseButton1Click:Connect(function() flyY = -1 end)
-RunService.RenderStepped:Connect(function() if not flyOn then flyY=0 end end)
+AtualizarLista()
+Players.PlayerAdded:Connect(AtualizarLista)
+Players.PlayerRemoving:Connect(AtualizarLista)
 
--- SPEED
-local speedOn = false
-SpeedBtn.MouseButton1Click:Connect(function()
-	speedOn = not speedOn
-	AnimateButton(SpeedBtn,speedOn)
-	Humanoid.WalkSpeed = speedOn and 50 or 16
-end)
-
--- NOCLIP
-local noclipOn=false
-NoclipBtn.MouseButton1Click:Connect(function()
-	noclipOn = not noclipOn
-	AnimateButton(NoclipBtn,noclipOn)
-end)
-
+--======================================
+-- LOOPS
+--======================================
 RunService.Stepped:Connect(function()
-	if noclipOn then
-		for _,v in pairs(Char:GetDescendants()) do
-			if v:IsA("BasePart") then
-				v.CanCollide=false
-			end
-		end
-	end
+    if noclipOn and Char then
+        for _, v in pairs(Char:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+    
+    if flyOn and HRP and bv then
+        local move = Humanoid.MoveDirection
+        bv.Velocity = Vector3.new(move.X * flySpeed, flyY * flySpeed, move.Z * flySpeed)
+    end
+    
+    if spinOn and HRP then
+        HRP.CFrame = HRP.CFrame * CFrame.Angles(0, math.rad(5), 0)
+    end
 end)
 
--- SPIN
-local spinOn=false
-SpinBtn.MouseButton1Click:Connect(function()
-	spinOn = not spinOn
-	AnimateButton(SpinBtn,spinOn)
+-- ABRIR MENU (BOLINHA NO CENTRO)
+ToggleBtn.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+    if Frame.Visible then AtualizarLista() end
 end)
 
-RunService.RenderStepped:Connect(function()
-	if spinOn then
-		HRP.CFrame = HRP.CFrame*CFrame.Angles(0,math.rad(80),0)
-	end
-end)
-
---======================================
--- CAMERA
---======================================
-local CamFreeBtn = Button(CamPage,"📷 Camera Livre")
-local CameramanBtn = Button(CamPage,"🎥 Cameraman")
-local camOn=false
-local camManOn=false
-local camCF
-
-CamFreeBtn.MouseButton1Click:Connect(function()
-	camOn = not camOn
-	AnimateButton(CamFreeBtn,camOn)
-	if camOn then
-		camCF=Camera.CFrame
-		Camera.CameraType=Enum.CameraType.Scriptable
-	else
-		Camera.CameraType=Enum.CameraType.Custom
-	end
-end)
-
-CameramanBtn.MouseButton1Click:Connect(function()
-	camManOn = not camManOn
-	AnimateButton(CameramanBtn,camManOn)
-	if camManOn then
-		Camera.CameraType=Enum.CameraType.Scriptable
-		camCF=Camera.CFrame
-	else
-		Camera.CameraType=Enum.CameraType.Custom
-	end
-end)
-
-RunService.RenderStepped:Connect(function(dt)
-	if camManOn then
-		local delta = UIS:GetMouseDelta()
-		camCF *= CFrame.Angles(-delta.Y*0.002,-delta.X*0.002,0)
-		camCF += Camera.CFrame.LookVector*Humanoid.MoveDirection.Magnitude*0.5
-		Camera.CFrame = camCF
-	end
-end)
-
---======================================
--- VISUAL
---======================================
-local ESPBtn = Button(VisualPage,"👁️ ESP Time")
-local InvisBtn = Button(VisualPage,"👻 Invisível")
-local espOn=false
-local invisOn=false
-local espObjs={}
-
-local function TeamColor(p)
-	if p.Team and p.Team.TeamColor then return p.Team.TeamColor.Color end
-	return Color3.fromRGB(255,0,0)
-end
-
-ESPBtn.MouseButton1Click:Connect(function()
-	espOn = not espOn
-	AnimateButton(ESPBtn,espOn)
-	for _,h in pairs(espObjs) do h:Destroy() end
-	espObjs = {}
-	if espOn then
-		for _,p in pairs(Players:GetPlayers()) do
-			if p~=Player and p.Character then
-				local h = Instance.new("Highlight",p.Character)
-				h.FillColor=TeamColor(p)
-				h.FillTransparency=0.35
-				h.OutlineTransparency=0
-				espObjs[p]=h
-			end
-		end
-	end
-end)
-
-InvisBtn.MouseButton1Click:Connect(function()
-	invisOn = not invisOn
-	AnimateButton(InvisBtn,invisOn)
-	for _,v in pairs(Char:GetDescendants()) do
-		if v:IsA("BasePart") or v:IsA("Decal") then
-			v.Transparency = invisOn and 1 or 0
-		end
-	end
-end)
-
---======================================
--- TELEPORT
---======================================
-local LocalTPBtn = Button(TPPage,"📍 Teleport Local")
-local TpBtn = Button(TPPage,"🚀 Teleport Player")
-local savedCF = HRP.CFrame
-local SelectedPlayer
-
-LocalTPBtn.MouseButton1Click:Connect(function()
-	if (HRP.Position-savedCF.Position).Magnitude>5 then
-		savedCF=HRP.CFrame
-	else
-		HRP.CFrame=savedCF
-	end
-end)
-
--- LISTA PLAYERS
-local function RefreshPlayers()
-	for _,c in pairs(TPPage:GetChildren()) do
-		if c:IsA("TextButton") and c~=LocalTPBtn and c~=TpBtn then
-			c:Destroy()
-		end
-	end
-	for _,p in pairs(Players:GetPlayers()) do
-		if p~=Player then
-			local b=Button(TPPage,p.Name)
-			b.MouseButton1Click:Connect(function()
-				SelectedPlayer=p
-			end)
-		end
-	end
-end
-
-RefreshPlayers()
-Players.PlayerAdded:Connect(RefreshPlayers)
-Players.PlayerRemoving:Connect(RefreshPlayers)
-
-TpBtn.MouseButton1Click:Connect(function()
-	if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		HRP.CFrame = SelectedPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
-	end
-end)
+print("✅ SCRIPT MOBILE CARREGADO!")
+print("📱 Bolinha no CENTRO da tela - Toque para abrir o menu!")
